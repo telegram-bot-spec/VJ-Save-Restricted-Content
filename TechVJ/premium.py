@@ -8,62 +8,70 @@ from database.db import db
 from config import ADMINS, UPI_ID, UPI_QR_BASE64, PREMIUM_PLANS, SUPPORT_USERNAME
 from datetime import datetime
 import base64
+import io
 
 # ==================== USER COMMANDS ====================
 
 @Client.on_message(filters.command("premium") & filters.private)
 async def show_premium_plans(client: Client, message: Message):
-    """Show all premium plans"""
+    """Show all premium plans with price buttons"""
     
     # Build premium plans message
     text = "╔═══════════════════════════╗\n"
     text += "   💎 PREMIUM PLANS 💎\n"
     text += "╚═══════════════════════════╝\n\n"
     
-    text += "⚡ 1 DAY - ₹30\n"
-    text += "   • Zero Wait Time\n"
-    text += "   • Unlimited Downloads\n"
-    text += "   • Priority Support\n\n"
+    text += "**Choose your plan below:**\n\n"
     
-    text += "🔥 3 DAYS - ₹40 (Save 55%)\n"
-    text += "   • ₹13 per day\n"
-    text += "   • Best for trial\n\n"
+    text += "⚡ **1 Day** - Zero wait, unlimited downloads\n"
+    text += "🔥 **3 Days** - Best for trial (Save 55%)\n"
+    text += "💎 **7 Days** - Most popular! (Save 63%)\n"
+    text += "👑 **15 Days** - Extended access (Save 70%)\n"
+    text += "🌟 **1 Month** - Best value! (Save 73%)\n"
+    text += "🚀 **3 Months** - Ultimate deal (Save 80%)\n\n"
     
-    text += "💎 7 DAYS - ₹80 (Save 63%) ⭐ POPULAR\n"
-    text += "   • ₹11 per day\n"
-    text += "   • Best Value!\n\n"
+    text += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     
-    text += "👑 15 DAYS - ₹140 (Save 70%)\n"
-    text += "   • ₹9 per day\n\n"
+    text += "**Premium Benefits:**\n"
+    text += "✅ Unlimited downloads per day\n"
+    text += "✅ Zero wait time (instant!)\n"
+    text += "✅ Up to 101 files per batch\n"
+    text += "✅ Download private content\n"
+    text += "✅ Priority support\n\n"
     
-    text += "🌟 1 MONTH - ₹249 (Save 73%)\n"
-    text += "   • ₹8 per day\n"
-    text += "   • Most Popular!\n\n"
+    text += "📸 **After Payment:**\n"
+    text += f"Send screenshot to @{SUPPORT_USERNAME}\n"
+    text += f"with your User ID: `{message.from_user.id}`"
     
-    text += "🚀 3 MONTHS - ₹599 (Save 80%)\n"
-    text += "   • ₹6 per day\n"
-    text += "   • Best Deal!\n\n"
-    
-    text += "━━━━━━━━━━━━━━━━━━━━━━━\n"
-    text += f"💳 PAY VIA UPI: `{UPI_ID}`\n\n"
-    text += "📸 After Payment:\n"
-    text += f"1. Take payment screenshot\n"
-    text += f"2. Send to @{SUPPORT_USERNAME}\n"
-    text += f"3. Mention your User ID: `{message.from_user.id}`\n"
-    text += f"4. Get activated in 5-30 mins!\n"
-    
-    # Buttons
+    # Buttons with prices
     buttons = [
-        [InlineKeyboardButton("💳 Show QR Code", callback_data="show_qr")],
+        [InlineKeyboardButton("⚡ 1 Day - ₹30", callback_data="buy_1_day")],
+        [InlineKeyboardButton("🔥 3 Days - ₹40", callback_data="buy_3_days")],
+        [InlineKeyboardButton("💎 7 Days - ₹80 ⭐", callback_data="buy_7_days")],
+        [InlineKeyboardButton("👑 15 Days - ₹140", callback_data="buy_15_days")],
+        [InlineKeyboardButton("🌟 1 Month - ₹249", callback_data="buy_30_days")],
+        [InlineKeyboardButton("🚀 3 Months - ₹599", callback_data="buy_90_days")],
         [InlineKeyboardButton("💬 Contact Support", url=f"https://t.me/{SUPPORT_USERNAME}")]
     ]
     
     await message.reply_text(text, reply_markup=InlineKeyboardMarkup(buttons))
 
 
-@Client.on_callback_query(filters.regex("show_qr"))
-async def show_qr_code(client: Client, callback: CallbackQuery):
-    """Show UPI QR code for payment"""
+@Client.on_callback_query(filters.regex("^buy_"))
+async def show_qr_for_plan(client: Client, callback: CallbackQuery):
+    """Show QR code directly when user selects a plan"""
+    
+    # Extract plan from callback data
+    plan_key = callback.data.replace("buy_", "")
+    
+    # Get plan details
+    plan_info = PREMIUM_PLANS.get(plan_key, {})
+    if not plan_info:
+        await callback.answer("Invalid plan selected!", show_alert=True)
+        return
+    
+    price = plan_info["price"]
+    title = plan_info["title"]
     
     if UPI_QR_BASE64 == "PASTE_YOUR_BASE64_STRING_HERE":
         await callback.answer("QR Code not configured yet. Contact admin.", show_alert=True)
@@ -71,21 +79,36 @@ async def show_qr_code(client: Client, callback: CallbackQuery):
     
     try:
         # Decode base64 to image
-        qr_image = base64.b64decode(UPI_QR_BASE64)
+        qr_image_data = base64.b64decode(UPI_QR_BASE64)
         
-        caption = f"💳 Scan this QR code to pay\n\n"
-        caption += f"UPI ID: `{UPI_ID}`\n\n"
-        caption += f"📸 After payment:\n"
-        caption += f"Send screenshot to @{SUPPORT_USERNAME}\n"
-        caption += f"With your User ID: `{callback.from_user.id}`"
+        caption = f"╔═══════════════════════════╗\n"
+        caption += f"   💳 PAYMENT DETAILS 💳\n"
+        caption += f"╚═══════════════════════════╝\n\n"
+        caption += f"**Selected Plan:** {title}\n"
+        caption += f"**Amount to Pay:** ₹{price}\n\n"
+        caption += f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        caption += f"💳 **UPI ID:** `{UPI_ID}`\n\n"
+        caption += f"📱 **Steps:**\n"
+        caption += f"1. Scan QR code OR copy UPI ID\n"
+        caption += f"2. Pay ₹{price}\n"
+        caption += f"3. Take screenshot of payment\n"
+        caption += f"4. Send to @{SUPPORT_USERNAME}\n\n"
+        caption += f"📝 **Important:** Mention your User ID\n"
+        caption += f"Your ID: `{callback.from_user.id}`\n\n"
+        caption += f"⏰ Activation: Within 5-30 minutes"
         
+        # Send QR code image
         await callback.message.reply_photo(
-            photo=qr_image,
-            caption=caption
+            photo=io.BytesIO(qr_image_data),
+            caption=caption,
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("💬 Send Payment Proof", url=f"https://t.me/{SUPPORT_USERNAME}")
+            ]])
         )
-        await callback.answer("QR Code sent! ✅")
-    except:
+        await callback.answer(f"✅ Pay ₹{price} and send screenshot!")
+    except Exception as e:
         await callback.answer("Error loading QR code. Contact support.", show_alert=True)
+        print(f"QR Code error: {e}")
 
 
 @Client.on_message(filters.command("myplan") & filters.private)
@@ -104,29 +127,38 @@ async def check_my_plan(client: Client, message: Message):
         text = "╔═══════════════════════════╗\n"
         text += "   💎 YOUR PREMIUM STATUS 💎\n"
         text += "╚═══════════════════════════╝\n\n"
-        text += f"✅ Status: **Premium Active**\n"
-        text += f"📦 Plan: **{plan}**\n"
-        text += f"📅 Expires: **{expiry.strftime('%d %B %Y')}**\n"
-        text += f"⏰ Days Left: **{days_left} days**\n\n"
-        text += "**Premium Benefits:**\n"
-        text += "✅ Zero Wait Time\n"
-        text += "✅ Unlimited Downloads\n"
-        text += "✅ Priority Support\n"
+        text += f"✅ **Status:** Premium Active\n"
+        text += f"📦 **Plan:** {plan}\n"
+        text += f"📅 **Expires:** {expiry.strftime('%d %B %Y')}\n"
+        text += f"⏰ **Days Left:** {days_left} days\n\n"
+        text += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        text += "**🎉 Your Premium Benefits:**\n"
+        text += "✅ Unlimited downloads per day\n"
+        text += "✅ Zero wait time (instant!)\n"
+        text += "✅ Up to 101 files per batch\n"
+        text += "✅ Unlimited batches\n"
+        text += "✅ Download private content\n"
+        text += "✅ Priority support\n"
         
         buttons = [[InlineKeyboardButton("💬 Support", url=f"https://t.me/{SUPPORT_USERNAME}")]]
     else:
         text = "╔═══════════════════════════╗\n"
         text += "   📊 YOUR CURRENT PLAN 📊\n"
         text += "╚═══════════════════════════╝\n\n"
-        text += "⚠️ Status: **Free User**\n\n"
-        text += "**Current Limits:**\n"
-        text += "❌ 5 downloads per day\n"
-        text += "❌ 30 seconds wait time\n"
-        text += "❌ Cannot download private content\n\n"
-        text += "**Upgrade to Premium for:**\n"
-        text += "✅ Zero Wait Time\n"
-        text += "✅ Unlimited Downloads\n"
-        text += "✅ Priority Support\n"
+        text += "⚠️ **Status:** Free User\n\n"
+        text += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        text += "**⛔ Current Limits:**\n"
+        text += "• Only 5 downloads per day\n"
+        text += "• 30 seconds wait time\n"
+        text += "• Cannot download private content\n"
+        text += "• Basic support only\n\n"
+        text += "**✅ Upgrade to Premium for:**\n"
+        text += "• Unlimited downloads per day\n"
+        text += "• Zero wait time (instant!)\n"
+        text += "• Up to 101 files per batch\n"
+        text += "• Unlimited batches\n"
+        text += "• Download private content\n"
+        text += "• Priority support\n"
         
         buttons = [
             [InlineKeyboardButton("💎 Upgrade to Premium", callback_data="show_premium")],
@@ -190,10 +222,13 @@ async def add_premium_user(client: Client, message: Message):
                 user_id,
                 f"🎉 **Congratulations!**\n\n"
                 f"Your **{plan_name}** premium has been activated!\n\n"
-                f"**Benefits:**\n"
-                f"✅ Zero Wait Time\n"
-                f"✅ Unlimited Downloads\n"
-                f"✅ Priority Support\n\n"
+                f"**🎁 Your Benefits:**\n"
+                f"✅ Unlimited downloads per day\n"
+                f"✅ Zero wait time (instant!)\n"
+                f"✅ Up to 101 files per batch\n"
+                f"✅ Unlimited batches\n"
+                f"✅ Download private content\n"
+                f"✅ Priority support\n\n"
                 f"📅 Valid till: **{expiry.strftime('%d %B %Y')}**\n\n"
                 f"Enjoy premium features! 🚀"
             )
