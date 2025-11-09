@@ -8,7 +8,7 @@ import pyrogram
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated, UserAlreadyParticipant, InviteHashExpired, UsernameNotOccupied
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message 
-from config import API_ID, API_HASH, ERROR_MESSAGE, LOGIN_SYSTEM, STRING_SESSION, CHANNEL_ID, WAITING_TIME
+from config import API_ID, API_HASH, ERROR_MESSAGE, LOGIN_SYSTEM, STRING_SESSION, CHANNEL_ID, WAITING_TIME, FREE_USER_DAILY_LIMIT, FREE_USER_WAIT_TIME, PREMIUM_USER_WAIT_TIME, SUPPORT_USERNAME, COMMUNITY_GROUP
 from database.db import db
 from TechVJ.strings import HELP_TXT
 from bot import TechVJUser
@@ -61,16 +61,28 @@ def progress(current, total, message, type):
 async def send_start(client: Client, message: Message):
     if not await db.is_user_exist(message.from_user.id):
         await db.add_user(message.from_user.id, message.from_user.first_name)
+    
+    # Check if user is premium
+    is_premium = await db.check_premium(message.from_user.id)
+    
+    if is_premium:
+        status_text = "💎 **Premium User**"
+    else:
+        status_text = "🆓 **Free User** - Upgrade to Premium!"
+    
     buttons = [[
-        InlineKeyboardButton("❣️ Developer", url = "https://t.me/kingvj01")
+        InlineKeyboardButton("🌟 Get Premium", callback_data="show_premium")
     ],[
-        InlineKeyboardButton('🔍 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/vj_bot_disscussion'),
-        InlineKeyboardButton('🤖 ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url='https://t.me/vj_botz')
+        InlineKeyboardButton('❓ Help', callback_data='help'),
+        InlineKeyboardButton('📊 My Plan', callback_data='my_plan')
+    ],[
+        InlineKeyboardButton('👥 Join Group', url=COMMUNITY_GROUP),
+        InlineKeyboardButton('💬 Support', url=f'https://t.me/{SUPPORT_USERNAME}')
     ]]
     reply_markup = InlineKeyboardMarkup(buttons)
     await client.send_message(
         chat_id=message.chat.id, 
-        text=f"<b>👋 Hi {message.from_user.mention}, I am Save Restricted Content Bot, I can send you restricted content by its post link.\n\nFor downloading restricted content /login first.\n\nKnow how to use bot by - /help</b>", 
+        text=f"<b>👋 Hi {message.from_user.mention},\n\nI am Save Restricted Content Bot. I can send you restricted content by its post link.\n\n{status_text}\n\nFor downloading restricted content /login first.\n\nKnow how to use bot: /help\n\n⚡ Want INSTANT downloads with NO limits?\n💎 Upgrade to Premium: /premium</b>", 
         reply_markup=reply_markup, 
         reply_to_message_id=message.id
     )
@@ -96,6 +108,11 @@ async def send_cancel(client: Client, message: Message):
 
 @Client.on_message(filters.text & filters.private)
 async def save(client: Client, message: Message):
+    user_id = message.from_user.id
+    
+    # Check if user is premium
+    is_premium = await db.check_premium(user_id)
+    
     # Joining chat
     if ("https://t.me/+" in message.text or "https://t.me/joinchat/" in message.text) and LOGIN_SYSTEM == False:
         if TechVJUser is None:
@@ -115,8 +132,28 @@ async def save(client: Client, message: Message):
         return
     
     if "https://t.me/" in message.text:
+        # Check daily limit for free users
+        if not is_premium:
+            can_download = await db.check_daily_limit(user_id, FREE_USER_DAILY_LIMIT)
+            if not can_download:
+                downloads_today = await db.get_daily_downloads(user_id)
+                await message.reply(
+                    f"⚠️ **Daily Limit Reached!**\n\n"
+                    f"You have used all **{FREE_USER_DAILY_LIMIT}** downloads for today.\n\n"
+                    f"**Upgrade to Premium for:**\n"
+                    f"✅ Unlimited Downloads\n"
+                    f"✅ Zero Wait Time\n"
+                    f"✅ Priority Support\n\n"
+                    f"Use /premium to upgrade!",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("💎 Upgrade Now", callback_data="show_premium")
+                    ]])
+                )
+                return
+        
         if batch_temp.IS_BATCH.get(message.from_user.id) == False:
             return await message.reply_text("**One Task Is Already Processing. Wait For Complete It. If You Want To Cancel This Task Then Use - /cancel**")
+        
         datas = message.text.split("/")
         temp = datas[-1].replace("?single","").split("-")
         fromID = int(temp[0].strip())
@@ -144,6 +181,11 @@ async def save(client: Client, message: Message):
             acc = TechVJUser
 				
         batch_temp.IS_BATCH[message.from_user.id] = False
+        
+        # Increment download counter for free users
+        if not is_premium:
+            await db.increment_daily_downloads(user_id)
+        
         for msgid in range(fromID, toID+1):
             if batch_temp.IS_BATCH.get(message.from_user.id): break
             
@@ -183,8 +225,19 @@ async def save(client: Client, message: Message):
                         if ERROR_MESSAGE == True:
                             await client.send_message(message.chat.id, f"Error: {e}", reply_to_message_id=message.id)
 
-            # wait time
-            await asyncio.sleep(WAITING_TIME)
+            # Wait time based on premium status
+            if is_premium:
+                wait_time = PREMIUM_USER_WAIT_TIME  # 0 seconds for premium
+            else:
+                wait_time = FREE_USER_WAIT_TIME  # 30 seconds for free users
+                # Show remaining downloads for free users
+                downloads_today = await db.get_daily_downloads(user_id)
+                remaining = FREE_USER_DAILY_LIMIT - downloads_today
+                if remaining > 0 and wait_time > 0:
+                    await message.reply(f"⏳ Please wait {wait_time} seconds...\n📊 Downloads left today: {remaining}/{FREE_USER_DAILY_LIMIT}")
+            
+            await asyncio.sleep(wait_time)
+            
         if LOGIN_SYSTEM == True:
             try:
                 await acc.disconnect()
@@ -358,4 +411,3 @@ def get_message_type(msg: pyrogram.types.messages_and_media.message.Message):
         return "Text"
     except:
         pass
-        
