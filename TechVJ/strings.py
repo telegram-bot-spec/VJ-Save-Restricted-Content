@@ -2,69 +2,121 @@
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
 # Ask Doubt on telegram @KingVJ01
 
-HELP_TXT = """**🌟 Help Menu** 
+HELP_TXT = """╔═══════════════════════════╗
+   🌟 **HOW TO USE THE BOT** 🌟
+╚═══════════════════════════╝
 
-**__FOR PUBLIC CHATS__**
+**📥 FOR PUBLIC CHANNELS/GROUPS:**
+Simply send the post link!
 
-__Just send post/s link__
-
-
-**__FOR PRIVATE CHATS__**
-
-__First send invite link of the chat (unnecessary if the account of string session already member of the chat)
-Then send post/s link__
-
-
-**__FOR BOT CHATS__**
-
-__Send link with '/b/', bot's username and message id, you might want to install some unofficial client to get the id like below__
-
-```
-https://t.me/b/botusername/4321
-```
-
-**__MULTI POSTS__**
-
-__Send public/private posts link as explained above with format "from - to" to send multiple messages like below__
-
-
-```
-https://t.me/xxxx/1001-1010
-
-https://t.me/c/xxxx/101 - 120
-```
-
-__Note that space in between doesn't matter__
+**Example:**
+`https://t.me/channel_name/123`
 
 ━━━━━━━━━━━━━━━━━━━━━━━
 
-**🆓 FREE USER LIMITS:**
-• 5 downloads per day
-• 30 seconds wait time between downloads
+**🔒 FOR PRIVATE CHANNELS/GROUPS:**
+
+**Step 1:** Send invite link first
+(Skip if already a member)
+
+**Step 2:** Send post link
+
+**Example:**
+`https://t.me/c/1234567/123`
+
+━━━━━━━━━━━━━━━━━━━━━━━
+
+**🤖 FOR BOT MESSAGES:**
+
+Send link with `/b/` format:
+
+**Example:**
+`https://t.me/b/botusername/4321`
+
+━━━━━━━━━━━━━━━━━━━━━━━
+
+**📦 BATCH DOWNLOAD (Multiple Files):**
+
+Use "from-to" format:
+
+**Examples:**
+`https://t.me/channel/101-110`
+`https://t.me/c/123456/50 - 75`
+
+*Note: Spaces don't matter*
+
+**Batch Limits:**
+• Free Users: Up to 5 files per batch
+• Premium Users: Up to 101 files per batch
+
+━━━━━━━━━━━━━━━━━━━━━━━
+
+**🆓 FREE USER FEATURES:**
+
+⚠️ **Limitations:**
+• Only 5 downloads per day
+• 30 seconds wait between downloads
 • Cannot download from private channels
-
-**💎 PREMIUM BENEFITS:**
-• Unlimited downloads
-• Zero wait time (instant!)
-• Download from private channels
-• Priority support
-
-**Upgrade to Premium:** /premium
+• Basic support
 
 ━━━━━━━━━━━━━━━━━━━━━━━
 
-**📱 COMMANDS:**
+**💎 PREMIUM USER BENEFITS:**
+
+✅ **Unlimited Downloads:**
+   • No daily limit restrictions
+   • Download as much as you want!
+
+✅ **Zero Wait Time:**
+   • Instant downloads
+   • No 30-second delays
+
+✅ **Batch Downloads:**
+   • Up to 101 files per batch
+   • Unlimited number of batches
+   • Download hundreds of files easily!
+
+✅ **Private Content Access:**
+   • Download from private channels
+   • Access restricted content
+
+✅ **Priority Support:**
+   • Quick response time
+   • Dedicated assistance
+
+✅ **No Ads:**
+   • Clean, ad-free experience
+
+━━━━━━━━━━━━━━━━━━━━━━━
+
+**🎯 AVAILABLE COMMANDS:**
 
 /start - Start the bot
 /help - Show this help menu
-/premium - View premium plans
-/myplan - Check your premium status
-/login - Login to your account
-/logout - Logout from account
-/cancel - Cancel current task
+/premium - View all premium plans
+/myplan - Check your subscription status
+/login - Login to download private content
+/logout - Logout from your account
+/cancel - Cancel ongoing download task
 
-**👥 Community:** https://t.me/CleanYourVibe
-**💬 Support:** @aryansmilezzz"""
+━━━━━━━━━━━━━━━━━━━━━━━
+
+**💰 UPGRADE TO PREMIUM:**
+
+Get instant access to all premium features!
+
+Plans starting from just **₹30/day**
+
+👉 Use /premium to see all plans
+
+━━━━━━━━━━━━━━━━━━━━━━━
+
+**📱 NEED HELP?**
+
+👥 Join Community: https://t.me/CleanYourVibe
+💬 Contact Support: @aryansmilezzz
+
+**Enjoy downloading! 🚀**"""
        
 # Don't Remove Credit Tg - @VJ_Botz
 # Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
