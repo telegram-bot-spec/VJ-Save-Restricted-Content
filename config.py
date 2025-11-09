@@ -40,3 +40,34 @@ WAITING_TIME = int(os.environ.get("WAITING_TIME", "10")) # time in seconds
 
 # If You Want Error Message In Your Personal Message Then Turn It True Else If You Don't Want Then Flase
 ERROR_MESSAGE = bool(os.environ.get('ERROR_MESSAGE', True))
+
+# ==================== PREMIUM SYSTEM CONFIG ====================
+
+# Premium Payment Settings
+UPI_ID = "aryan0278@ptyes"
+
+# Paste your QR code base64 here after converting from https://www.base64-image.de/
+UPI_QR_BASE64 = "PASTE_YOUR_BASE64_STRING_HERE"
+
+# Free User Limits
+FREE_USER_DAILY_LIMIT = 5  # Maximum downloads per day for free users
+FREE_USER_WAIT_TIME = 30  # Wait time in seconds between downloads for free users
+
+# Premium User Settings
+PREMIUM_USER_WAIT_TIME = 0  # No wait time for premium users
+
+# Premium Plans (in rupees)
+PREMIUM_PLANS = {
+    "1_day": {"price": 30, "days": 1, "title": "1 Day"},
+    "3_days": {"price": 40, "days": 3, "title": "3 Days"},
+    "7_days": {"price": 80, "days": 7, "title": "7 Days"},
+    "15_days": {"price": 140, "days": 15, "title": "15 Days"},
+    "30_days": {"price": 249, "days": 30, "title": "1 Month"},
+    "90_days": {"price": 599, "days": 90, "title": "3 Months"}
+}
+
+# Support & Community Links
+SUPPORT_USERNAME = "aryansmilezzz"
+COMMUNITY_GROUP = "https://t.me/CleanYourVibe"
+
+# ==================== END PREMIUM CONFIG ====================
