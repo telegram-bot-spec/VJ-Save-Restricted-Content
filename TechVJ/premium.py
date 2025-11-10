@@ -4,6 +4,7 @@
 
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message, CallbackQuery
+from pyrogram.errors import ChatAdminRequired, UserNotParticipant, ChannelPrivate
 from database.db import db
 from config import ADMINS, UPI_ID, UPI_QR_BASE64, PREMIUM_PLANS, SUPPORT_USERNAME
 from datetime import datetime
@@ -36,8 +37,9 @@ async def show_premium_plans(client: Client, message: Message):
     text += "**Premium Benefits:**\n"
     text += "✅ Unlimited downloads per day\n"
     text += "✅ Zero wait time (instant!)\n"
-    text += "✅ Up to 101 files per batch\n"
+    text += "✅ Up to 1000 files per batch\n"
     text += "✅ Download private content\n"
+    text += "✅ Set your own channel (/setchannel)\n"
     text += "✅ Priority support\n\n"
     
     text += "📸 **After Payment:**\n"
@@ -137,9 +139,10 @@ async def check_my_plan(client: Client, message: Message):
         text += "**🎉 Your Premium Benefits:**\n"
         text += "✅ Unlimited downloads per day\n"
         text += "✅ Zero wait time (instant!)\n"
-        text += "✅ Up to 101 files per batch\n"
+        text += "✅ Up to 1000 files per batch\n"
         text += "✅ Unlimited batches\n"
         text += "✅ Download private content\n"
+        text += "✅ Set custom channel (/setchannel)\n"
         text += "✅ Priority support\n"
         
         buttons = [[InlineKeyboardButton("💬 Support", url=f"https://t.me/{SUPPORT_USERNAME}")]]
@@ -157,9 +160,10 @@ async def check_my_plan(client: Client, message: Message):
         text += "**✅ Upgrade to Premium for:**\n"
         text += "• Unlimited downloads per day\n"
         text += "• Zero wait time (instant!)\n"
-        text += "• Up to 101 files per batch\n"
+        text += "• Up to 1000 files per batch\n"
         text += "• Unlimited batches\n"
         text += "• Download private content\n"
+        text += "• Set custom channel (/setchannel)\n"
         text += "• Priority support\n"
         
         buttons = [
@@ -175,6 +179,261 @@ async def show_premium_callback(client: Client, callback: CallbackQuery):
     """Show premium plans via callback"""
     await callback.answer()
     await show_premium_plans(client, callback.message)
+
+
+@Client.on_callback_query(filters.regex("my_plan"))
+async def my_plan_callback(client: Client, callback: CallbackQuery):
+    """Check plan via callback"""
+    await callback.answer()
+    await check_my_plan(client, callback.message)
+
+
+@Client.on_callback_query(filters.regex("help"))
+async def help_callback(client: Client, callback: CallbackQuery):
+    """Show help via callback"""
+    await callback.answer()
+    from TechVJ.strings import HELP_TXT
+    await callback.message.reply(HELP_TXT)
+
+
+# ==================== CUSTOM CHANNEL COMMANDS (Premium Feature) ====================
+
+@Client.on_message(filters.command("setchannel") & filters.private)
+async def set_custom_channel(client: Client, message: Message):
+    """Set custom channel for downloads - Premium Only"""
+    
+    user_id = message.from_user.id
+    is_premium = await db.check_premium(user_id)
+    
+    if not is_premium:
+        await message.reply(
+            "⚠️ **Premium Feature Only!**\n\n"
+            "This feature is available only for premium users.\n\n"
+            "**Upgrade to Premium to:**\n"
+            "✅ Set your own channel for downloads\n"
+            "✅ Unlimited downloads per day\n"
+            "✅ Zero wait time\n"
+            "✅ Up to 1000 files per batch\n\n"
+            "Use /premium to upgrade!",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("💎 Get Premium", callback_data="show_premium")
+            ]])
+        )
+        return
+    
+    # Send instructions
+    instructions = (
+        "╔═══════════════════════════╗\n"
+        "   📱 SET CUSTOM CHANNEL 📱\n"
+        "╚═══════════════════════════╝\n\n"
+        "**Follow these steps:**\n\n"
+        "1️⃣ Create a channel or group\n"
+        "   (Public or Private)\n\n"
+        "2️⃣ Add this bot as admin\n"
+        f"   Bot: @{(await client.get_me()).username}\n\n"
+        "3️⃣ Give these permissions:\n"
+        "   ✅ Post Messages\n"
+        "   ✅ Edit Messages\n"
+        "   ✅ Delete Messages\n\n"
+        "4️⃣ Send me your channel:\n"
+        "   • Channel username: @yourchannel\n"
+        "   • Channel ID: -1001234567890\n"
+        "   • Or forward any message from channel\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "**Examples:**\n"
+        "`@mychannel`\n"
+        "`-1001234567890`\n\n"
+        "Type /cancel to cancel"
+    )
+    
+    await message.reply(instructions)
+    
+    # Wait for user to send channel
+    try:
+        response = await client.listen(message.chat.id, filters=filters.text | filters.forwarded, timeout=300)
+        
+        if response.text and response.text.startswith('/cancel'):
+            await response.reply("❌ **Cancelled!**")
+            return
+        
+        # Extract channel info
+        channel_input = None
+        
+        if response.forward_from_chat:
+            # User forwarded a message from channel
+            channel_input = response.forward_from_chat.id
+        elif response.text:
+            channel_input = response.text.strip()
+            # Remove @ if present
+            if channel_input.startswith('@'):
+                channel_input = channel_input[1:]
+        
+        if not channel_input:
+            await response.reply("❌ Invalid input. Please try again with /setchannel")
+            return
+        
+        # Verify bot is admin
+        try:
+            chat = await client.get_chat(channel_input)
+            
+            # Check if bot is admin
+            bot_member = await client.get_chat_member(chat.id, (await client.get_me()).id)
+            
+            if bot_member.status not in ["administrator", "creator"]:
+                await response.reply(
+                    f"❌ **Bot Not Admin!**\n\n"
+                    f"Please make me admin in **{chat.title}** with these permissions:\n"
+                    f"✅ Post Messages\n"
+                    f"✅ Edit Messages\n"
+                    f"✅ Delete Messages\n\n"
+                    f"Then try again with /setchannel"
+                )
+                return
+            
+            # Check if bot can post
+            if not bot_member.privileges or not bot_member.privileges.can_post_messages:
+                await response.reply(
+                    f"❌ **Missing Permissions!**\n\n"
+                    f"I need these permissions in **{chat.title}**:\n"
+                    f"✅ Post Messages\n"
+                    f"✅ Edit Messages\n"
+                    f"✅ Delete Messages\n\n"
+                    f"Please update and try again!"
+                )
+                return
+            
+            # Save channel
+            await db.set_user_channel(user_id, chat.id)
+            
+            await response.reply(
+                f"✅ **Channel Set Successfully!**\n\n"
+                f"📱 Channel: **{chat.title}**\n"
+                f"🆔 ID: `{chat.id}`\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"All your downloads will now go to this channel!\n\n"
+                f"**Commands:**\n"
+                f"• /mychannel - Check current channel\n"
+                f"• /removechannel - Reset to DM\n"
+                f"• /setchannel - Change channel"
+            )
+            
+        except ChatAdminRequired:
+            await response.reply(
+                "❌ **Bot Not Admin!**\n\n"
+                "Please add me as admin first with required permissions."
+            )
+        except ChannelPrivate:
+            await response.reply(
+                "❌ **Cannot Access Channel**\n\n"
+                "Make sure the bot is added to the channel and has admin rights."
+            )
+        except Exception as e:
+            await response.reply(f"❌ Error: {str(e)}\n\nPlease check the channel and try again.")
+            
+    except TimeoutError:
+        await message.reply("⏰ Timeout! Please try again with /setchannel")
+
+
+@Client.on_message(filters.command("mychannel") & filters.private)
+async def check_my_channel(client: Client, message: Message):
+    """Check current channel setting"""
+    
+    user_id = message.from_user.id
+    channel_id = await db.get_user_channel(user_id)
+    
+    if not channel_id:
+        is_premium = await db.check_premium(user_id)
+        
+        text = "╔═══════════════════════════╗\n"
+        text += "   📱 CHANNEL SETTINGS 📱\n"
+        text += "╚═══════════════════════════╝\n\n"
+        text += "📍 **Current Setting:** Your DM (Default)\n\n"
+        text += "All downloads will be sent to your private messages.\n\n"
+        
+        if is_premium:
+            text += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            text += "💎 **As a Premium User:**\n"
+            text += "You can set your own channel!\n\n"
+            text += "Use /setchannel to set up"
+            
+            buttons = [[InlineKeyboardButton("📱 Set Channel", callback_data="start_setchannel")]]
+        else:
+            text += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            text += "⚠️ **Want Custom Channel?**\n"
+            text += "Upgrade to Premium to:\n"
+            text += "✅ Set your own channel\n"
+            text += "✅ Download to your channel directly\n"
+            text += "✅ Organize downloads better\n"
+            
+            buttons = [[InlineKeyboardButton("💎 Get Premium", callback_data="show_premium")]]
+        
+        await message.reply(text, reply_markup=InlineKeyboardMarkup(buttons))
+        return
+    
+    # User has custom channel set
+    try:
+        chat = await client.get_chat(int(channel_id))
+        
+        text = "╔═══════════════════════════╗\n"
+        text += "   📱 CHANNEL SETTINGS 📱\n"
+        text += "╚═══════════════════════════╝\n\n"
+        text += f"✅ **Active Channel:**\n"
+        text += f"📱 Name: **{chat.title}**\n"
+        text += f"🆔 ID: `{chat.id}`\n"
+        
+        if chat.username:
+            text += f"🔗 Link: @{chat.username}\n"
+        
+        text += f"\n━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        text += f"All downloads go to this channel!\n\n"
+        text += f"**Commands:**\n"
+        text += f"• /setchannel - Change channel\n"
+        text += f"• /removechannel - Reset to DM"
+        
+        buttons = [[InlineKeyboardButton("🔄 Change Channel", callback_data="start_setchannel")]]
+        await message.reply(text, reply_markup=InlineKeyboardMarkup(buttons))
+        
+    except Exception as e:
+        await message.reply(
+            "⚠️ **Channel Not Accessible**\n\n"
+            "I cannot access the saved channel.\n"
+            "It may have been deleted or I was removed.\n\n"
+            "Use /setchannel to set a new channel\n"
+            "or /removechannel to reset to DM"
+        )
+
+
+@Client.on_message(filters.command("removechannel") & filters.private)
+async def remove_custom_channel(client: Client, message: Message):
+    """Remove custom channel - reset to DM"""
+    
+    user_id = message.from_user.id
+    channel_id = await db.get_user_channel(user_id)
+    
+    if not channel_id:
+        await message.reply(
+            "ℹ️ **No Custom Channel Set**\n\n"
+            "You don't have a custom channel set.\n"
+            "Downloads already go to your DM.\n\n"
+            "Use /setchannel to set a custom channel."
+        )
+        return
+    
+    # Remove channel
+    await db.remove_user_channel(user_id)
+    
+    await message.reply(
+        "✅ **Channel Removed Successfully!**\n\n"
+        "Downloads will now be sent to your DM (private messages).\n\n"
+        "Use /setchannel anytime to set a new channel."
+    )
+
+
+@Client.on_callback_query(filters.regex("start_setchannel"))
+async def setchannel_callback(client: Client, callback: CallbackQuery):
+    """Start setchannel via callback"""
+    await callback.answer()
+    await set_custom_channel(client, callback.message)
 
 
 # ==================== ADMIN COMMANDS ====================
@@ -253,9 +512,10 @@ async def add_premium_user(client: Client, message: Message):
                 f"**🎁 Your Benefits:**\n"
                 f"✅ Unlimited downloads per day\n"
                 f"✅ Zero wait time (instant!)\n"
-                f"✅ Up to 101 files per batch\n"
+                f"✅ Up to 1000 files per batch\n"
                 f"✅ Unlimited batches\n"
                 f"✅ Download private content\n"
+                f"✅ Set custom channel (/setchannel)\n"
                 f"✅ Priority support\n\n"
                 f"📅 Valid till: **{expiry.strftime('%d %B %Y, %I:%M %p')}**\n\n"
                 f"Enjoy premium features! 🚀"
@@ -385,6 +645,4 @@ async def show_stats(client: Client, message: Message):
     await message.reply(text)
 
 
-# Don't Remove Credit Tg - @VJ_Bots
-# Subscribe YouTube Channel For Amazing Bot https://youtube.com/@Tech_VJ
-# Ask Doubt on telegram @KingVJ01
+# Don't Remove Credit Tg - @VJ_
