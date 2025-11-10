@@ -20,7 +20,8 @@ class Database:
             premium_expiry = None,
             premium_plan = None,
             daily_downloads = 0,
-            last_download_reset = datetime.now()
+            last_download_reset = datetime.now(),
+            user_channel = None  # NEW: Store user's custom channel
         )
     
     async def add_user(self, id, name):
@@ -183,5 +184,28 @@ class Database:
                 return 0
             return user.get('daily_downloads', 0)
         return 0
+    
+    # ==================== USER CHANNEL FUNCTIONS (Premium Feature) ====================
+    
+    async def set_user_channel(self, user_id, channel_id):
+        """Set user's custom channel for downloads"""
+        await self.col.update_one(
+            {'id': int(user_id)},
+            {'$set': {'user_channel': str(channel_id)}}
+        )
+    
+    async def get_user_channel(self, user_id):
+        """Get user's custom channel"""
+        user = await self.col.find_one({'id': int(user_id)})
+        if user:
+            return user.get('user_channel')
+        return None
+    
+    async def remove_user_channel(self, user_id):
+        """Remove user's custom channel"""
+        await self.col.update_one(
+            {'id': int(user_id)},
+            {'$set': {'user_channel': None}}
+        )
 
 db = Database(DB_URI, "TechVJDemoBot")
