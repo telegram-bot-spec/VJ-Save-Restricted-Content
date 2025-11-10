@@ -65,8 +65,16 @@ class Database:
     # ==================== PREMIUM FUNCTIONS ====================
     
     async def add_premium(self, user_id, days, plan_name):
-        """Add premium to a user"""
-        expiry_date = datetime.now() + timedelta(days=days)
+        """Add premium to a user - supports fractional days (hours)"""
+        # Convert days to timedelta (supports decimal for hours)
+        if days < 1:
+            # For hours (e.g., 0.125 days = 3 hours)
+            duration = timedelta(hours=days * 24)
+        else:
+            # For days
+            duration = timedelta(days=days)
+        
+        expiry_date = datetime.now() + duration
         await self.col.update_one(
             {'id': int(user_id)},
             {'$set': {
