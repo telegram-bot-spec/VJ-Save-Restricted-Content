@@ -1,0 +1,43 @@
+name: Run Telegram Bot
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+  schedule:
+    # Runs every 5 hours (GitHub Actions has 6-hour limit per run)
+    - cron: '0 */5 * * *'
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        
+    - name: Run Telegram Bot
+      env:
+        LOGIN_SYSTEM: ${{ secrets.LOGIN_SYSTEM }}
+        STRING_SESSION: ${{ secrets.STRING_SESSION }}
+        API_HASH: ${{ secrets.API_HASH }}
+        API_ID: ${{ secrets.API_ID }}
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        ADMINS: ${{ secrets.ADMINS }}
+        CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+        DB_URI: ${{ secrets.DB_URI }}
+        WAITING_TIME: ${{ secrets.WAITING_TIME }}
+        ERROR_MESSAGE: ${{ secrets.ERROR_MESSAGE }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+      run: |
+        timeout 5h python bot.py || timeout 5h python main.py || echo "Bot stopped"
