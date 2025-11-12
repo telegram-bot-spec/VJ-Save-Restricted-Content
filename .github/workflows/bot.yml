@@ -2,7 +2,7 @@ name: Run Telegram Bot
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, TechVJ ]
   workflow_dispatch:
   schedule:
     # Runs every 5 hours (GitHub Actions has 6-hour limit per run)
@@ -40,4 +40,9 @@ jobs:
         ERROR_MESSAGE: ${{ secrets.ERROR_MESSAGE }}
         DB_NAME: ${{ secrets.DB_NAME }}
       run: |
-        timeout 5h python bot.py || timeout 5h python main.py || echo "Bot stopped"
+        echo "Starting Telegram Bot..."
+        echo "Current directory: $(pwd)"
+        echo "Files in directory:"
+        ls -la
+        echo "Running bot.py..."
+        timeout 5h python bot.py || echo "Bot stopped or timed out"
